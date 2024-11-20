@@ -3,10 +3,32 @@ import json
 import whisperx
 import gc
 
+import srt
+
+from datetime import timedelta
+
 MODEL_CACHE_DIR = "./.model-cache"
 
-
 def main():
+    with open("./result.json") as f:
+        text_extract = json.load(f)
+
+    subtitles = []
+    for segment in text_extract:
+        for word in segment['words']:
+            subtitles.append(
+                srt.Subtitle(
+                    start=timedelta(seconds=word['start']),
+                    end=timedelta(seconds=word['end']),
+                    content=word['word'],
+                    index=len(subtitles)
+                )
+            )
+    with open("./subtitles.srt", 'w') as f:
+        f.write(srt.compose(subtitles))
+    return 0
+
+def _get_text():
     device = "cpu"
     audio_file = "out.mp3"
     batch_size = 16  # reduce if low on GPU mem
