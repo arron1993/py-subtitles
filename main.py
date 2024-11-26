@@ -1,63 +1,33 @@
-import json
+import flet as ft
 
-import whisperx
-import gc
+from video import Video
 
-import srt
 
-from datetime import timedelta
+def main(page: ft.Page):
+    def on_pick_file(event):
+        path = event.files[0].path
+        selected_files.value = path
+        selected_files.update()
+        v = Video(path)
+        audio_trans = v.get_audio_text()
 
-MODEL_CACHE_DIR = "./.model-cache"
+    pick_files_dialog = ft.FilePicker(on_result=on_pick_file)
+    selected_files = ft.Text()
 
-def main():
-    with open("./result.json") as f:
-        text_extract = json.load(f)
+    page.overlay.append(pick_files_dialog)
 
-    subtitles = []
-    for segment in text_extract:
-        for word in segment['words']:
-            subtitles.append(
-                srt.Subtitle(
-                    start=timedelta(seconds=word['start']),
-                    end=timedelta(seconds=word['end']),
-                    content=word['word'],
-                    index=len(subtitles)
-                )
-            )
-    with open("./subtitles.srt", 'w') as f:
-        f.write(srt.compose(subtitles))
-    return 0
-
-def _get_text():
-    device = "cpu"
-    audio_file = "out.mp3"
-    batch_size = 16  # reduce if low on GPU mem
-    compute_type = "float32"
-
-    model = whisperx.load_model(
-        "large-v2", device, compute_type=compute_type, download_root=MODEL_CACHE_DIR
+    page.add(
+        ft.Row(
+            [
+                ft.ElevatedButton(
+                    "Pick file",
+                    icon=ft.icons.UPLOAD_FILE,
+                    on_click=lambda _: pick_files_dialog.pick_files(),
+                ),
+                selected_files,
+            ]
+        )
     )
 
-    audio = whisperx.load_audio(audio_file)
-    result = model.transcribe(audio, language="en", batch_size=batch_size)
-    print(result["segments"])
 
-    model_a, metadata = whisperx.load_align_model(
-        language_code=result["language"], device=device
-    )
-    result = whisperx.align(
-        result["segments"],
-        model_a,
-        metadata,
-        audio,
-        device,
-        return_char_alignments=False,
-    )
-
-    print(result["segments"])
-    with open("result.json", "w") as f:
-        json.dump(result["segments"], f)
-
-
-if __name__ == "__main__":
-    main()
+ft.app(main)

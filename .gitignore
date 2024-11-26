@@ -1,3 +1,4 @@
+.model_cache/
 cache/
 *.mp3
 *.json
